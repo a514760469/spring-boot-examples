@@ -30,7 +30,7 @@ public class JPEGMessageConverter implements MessageConverter {
         String path = "D:/" + fileName + ".jpg";
         File file = new File(path);
         try{
-            Files.copy(new ByteArrayInputStream(body),file.toPath());
+            Files.copy(new ByteArrayInputStream(body), file.toPath());
         }catch (IOException e){
             e.printStackTrace();
         }

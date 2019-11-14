@@ -9,7 +9,6 @@ import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
 import org.springframework.amqp.support.converter.ContentTypeDelegatingMessageConverter;
 import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
-import org.springframework.amqp.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,13 +35,22 @@ public class MQConfig {
 //        RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
 //        return rabbitAdmin;
 //    }
-//
+
 //    @Bean
 //    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory){
 //        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+//        rabbitTemplate.setMandatory(true);
 //        return rabbitTemplate;
 //    }
 
+    /**
+     * ContentTypeDelegatingMessageConverter是一个代理的MessageConverter。
+     * ContentTypeDelegatingMessageConverter本身不做消息转换的具体动作，
+     *      而是将消息转换委托给具体的MessageConverter
+     * ContentTypeDelegatingMessageConverter还有一个默认的MessageConverter，
+     *      也就是说当根据ContentType没有找到映射的MessageConverter的时候，就会使用默认的MessageConverter
+     *
+     */
     @Bean
     public SimpleMessageListenerContainer messageListenerContainer(ConnectionFactory connectionFactory){
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
@@ -66,7 +74,6 @@ public class MQConfig {
 
         ContentTypeDelegatingMessageConverter contentTypeDelegatingMessageConverter =
                 new ContentTypeDelegatingMessageConverter();
-//        contentTypeDelegatingMessageConverter.addDelegate(MessageProperties.CONTENT_TYPE_TEXT_PLAIN, );
         TextMessageConverter textMessageConverter = new TextMessageConverter();
         JPEGMessageConverter jpegMessageConverter = new JPEGMessageConverter();
         contentTypeDelegatingMessageConverter.addDelegate(MessageProperties.CONTENT_TYPE_JSON, jackson2JsonMessageConverter);

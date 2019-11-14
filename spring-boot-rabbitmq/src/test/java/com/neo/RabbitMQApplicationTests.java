@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,9 @@ public class RabbitMQApplicationTests {
 
 	@Autowired
 	RabbitTemplate rabbitTemplate;
+
+	@Autowired
+    ConnectionFactory connectionFactory;
 
 	@Test
 	public void contextLoads() {
@@ -187,8 +191,8 @@ public class RabbitMQApplicationTests {
 
 
     @Test
-    public void sendJpg() throws Exception{
-        byte[] body = Files.readAllBytes(Paths.get("C:/Users/Public/Pictures/Sample Pictures","企鹅.jpg"));
+    public void sendJpg() throws Exception {
+        byte[] body = Files.readAllBytes(Paths.get("D:/Users","Penguins.jpg"));
 
         MessageProperties messageProperties = new MessageProperties();
         messageProperties.setContentType("image/jpg");
@@ -196,5 +200,33 @@ public class RabbitMQApplicationTests {
         Message message = new Message(body, messageProperties);
 
         rabbitTemplate.send("so.order", message);
+    }
+
+
+    /**
+     * 测试 returnedCallBack
+     */
+    @Test
+    public void sendMissQueue() {
+
+        MessageProperties messageProperties = new MessageProperties();
+        messageProperties.getHeaders().put("desc","消息发送");
+        messageProperties.getHeaders().put("token","234sdfsdf3r342dsfd1232");
+
+        rabbitTemplate.setReturnCallback((message, replyCode, replyText, exchange, routingKey) -> {
+            System.err.println("=========returnedMessage=========");
+            System.out.println("replyCode:" + replyCode);
+            System.out.println("replyText:" + replyText);
+            System.out.println("exchange:" + exchange);
+            System.out.println("routingKey:" + routingKey);
+        });
+        rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
+            System.err.println("=========ConfirmCallback=========");
+            System.out.println("correlationData:" + correlationData);
+            System.out.println("ack:" + ack);
+            System.out.println("cause:" + cause);
+        });
+        // 路由不到指定的队列
+        rabbitTemplate.convertAndSend("aaa.exchange", "log.aaa", "hello welcome");
     }
 }
