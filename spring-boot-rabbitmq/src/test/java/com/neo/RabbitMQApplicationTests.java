@@ -9,6 +9,7 @@ import org.junit.runner.RunWith;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,10 +18,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -204,7 +203,7 @@ public class RabbitMQApplicationTests {
 
 
     /**
-     * 测试 returnedCallBack
+     * 测试 Publisher Confirms returnedCallBack
      */
     @Test
     public void sendMissQueue() {
@@ -220,13 +219,39 @@ public class RabbitMQApplicationTests {
             System.out.println("exchange:" + exchange);
             System.out.println("routingKey:" + routingKey);
         });
-        rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
-            System.err.println("=========ConfirmCallback=========");
-            System.out.println("correlationData:" + correlationData);
-            System.out.println("ack:" + ack);
-            System.out.println("cause:" + cause);
-        });
+//        rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
+//            System.err.println("=========ConfirmCallback=========");
+//            System.out.println("correlationData:" + correlationData);
+//            System.out.println("ack:" + ack);
+//            System.out.println("cause:" + cause);
+//        });
+
         // 路由不到指定的队列
         rabbitTemplate.convertAndSend("aaa.exchange", "log.aaa", "hello welcome");
+    }
+
+    /**
+     * rpc测试
+     * @throws InterruptedException
+     */
+    @Test
+    public void rpcTest() throws InterruptedException {
+        // 设置超时时间
+        rabbitTemplate.setReplyTimeout(10000);
+        String phone = "15634344321";
+        String content = "周年庆，五折优惠";
+
+        Message message = new Message((phone + ":" + content).getBytes(), new MessageProperties());
+
+//        rabbitTemplate.send("", "sms", message);
+//        使用sendAndReceive方法发送消息，该方法返回一个Message对象，该对象就是server返回的结果
+        Message reply = rabbitTemplate.sendAndReceive("", "sms", message,
+                new CorrelationData(UUID.randomUUID().toString()));
+        System.out.println(reply);
+        System.out.println("message, body:" + new String(reply.getBody()));
+        System.out.println("message, properties:" + reply.getMessageProperties());
+
+        TimeUnit.SECONDS.sleep(20);
+
     }
 }

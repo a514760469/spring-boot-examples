@@ -3,10 +3,14 @@ package com.neo.rabbit.consumer;
 import com.neo.model.User;
 import com.neo.rabbit.message.convert.JPEGMessageConverter;
 import com.neo.rabbit.message.convert.TextMessageConverter;
+import org.springframework.amqp.ImmediateAcknowledgeAmqpException;
+import org.springframework.amqp.core.AcknowledgeMode;
+import org.springframework.amqp.core.MessageListener;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
+import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.amqp.support.converter.ContentTypeDelegatingMessageConverter;
 import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -15,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhanglifeng
@@ -51,8 +56,8 @@ public class MQConfig {
      *      也就是说当根据ContentType没有找到映射的MessageConverter的时候，就会使用默认的MessageConverter
      *
      */
-    @Bean
-    public SimpleMessageListenerContainer messageListenerContainer(ConnectionFactory connectionFactory){
+//    @Bean
+    public SimpleMessageListenerContainer messageListenerContainer(ConnectionFactory connectionFactory) {
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.setQueueNames("so.order");
@@ -91,4 +96,38 @@ public class MQConfig {
         return container;
     }
 
+    @Bean
+    public SimpleMessageListenerContainer consumerAckContainer(ConnectionFactory connectionFactory){
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.setQueueNames("so.order");
+
+        // NONE 表示自动确认， 这是如果消费的时候抛出异常消息就丢了
+        // MANUAL: 手动 此时使用ChannelAwareMessageListener监听器实现ack和nack
+        // AUTO: 当抛出AmqpRejectAndDontRequeueException消息会被拒绝，且requeue=false
+        //          抛出ImmediateAcknowledgeAmqpException 则消息会被确认
+        //          其他的异常，则消息会被拒绝，且requeue=true (死循环的风险)
+        container.setAcknowledgeMode(AcknowledgeMode.AUTO);
+        container.setDefaultRequeueRejected(false);// 不会重新入队列
+        container.setMessageListener((ChannelAwareMessageListener) (message, channel) -> {
+            System.out.println("=====接收到消息=====");
+            System.out.println(new String(message.getBody()));
+
+//            TimeUnit.SECONDS.sleep(10);
+//            if (message.getMessageProperties().getHeaders().get("error") == null) {
+//                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+//                System.out.println("消息已经确认");
+//            } else {
+//                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+//                channel.basicReject(message.getMessageProperties().getDeliveryTag(), false);
+//                System.out.println("消息拒绝");
+//            }
+
+            // 相当于自己的一些消费逻辑抛错误
+//            throw new ImmediateAcknowledgeAmqpException("消费消息失败！");
+            throw new NullPointerException("消费消息失败! ");
+
+        });
+        return container;
+    }
 }
